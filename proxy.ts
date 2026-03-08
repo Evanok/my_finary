@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac } from "crypto";
 
+export const runtime = "nodejs";
+
 function sessionToken(): string {
   return createHmac("sha256", process.env.SESSION_SECRET!).update("session").digest("hex");
 }
