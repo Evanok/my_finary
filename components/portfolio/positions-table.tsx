@@ -63,13 +63,19 @@ export function PositionsTable({ positions, displayCurrency, fxRate, onValuation
   }
 
   return (
-    <div className="rounded-xl border bg-white overflow-hidden">
+    <div className="rounded-xl border bg-white overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/40">
-            {["Asset", "Category", "Qty", "Avg cost", "Current price", "Value", "P&L", "P&L %", ""].map((h, i) => (
-              <th key={i} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
-            ))}
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Asset</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">Category</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Qty</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Avg cost</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">Price</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Value</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">P&L</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">P&L %</th>
+            <th className="px-4 py-3" />
           </tr>
         </thead>
         <tbody>
@@ -84,25 +90,23 @@ export function PositionsTable({ positions, displayCurrency, fxRate, onValuation
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{p.symbol}</span>
                     {!p.priceValidated && (
-                      <Badge className="text-xs bg-amber-100 text-amber-600 border-0">
-                        ~
-                      </Badge>
+                      <Badge className="text-xs bg-amber-100 text-amber-600 border-0">~</Badge>
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground">{p.name}</span>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 hidden sm:table-cell">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${categoryStyle}`}>
                     {p.category.replace("_", " ")}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">{p.quantity.toLocaleString()}</td>
-                <td className="px-4 py-3 text-muted-foreground">{fmt(p.avgCostUsd)}</td>
-                <td className="px-4 py-3 text-muted-foreground">
+                <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{p.quantity.toLocaleString()}</td>
+                <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{fmt(p.avgCostUsd)}</td>
+                <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
                   {p.currentPriceUsd === null ? "—" : fmt(p.currentPriceUsd)}
                 </td>
                 <td className="px-4 py-3 font-semibold">{fmt(p.valueUsd)}</td>
-                <td className={`px-4 py-3 font-medium ${positive ? "text-emerald-600" : "text-rose-500"}`}>
+                <td className={`px-4 py-3 font-medium hidden sm:table-cell ${positive ? "text-emerald-600" : "text-rose-500"}`}>
                   {fmt(p.plUsd)}
                 </td>
                 <td className={`px-4 py-3 font-medium ${positive ? "text-emerald-600" : "text-rose-500"}`}>
@@ -118,7 +122,7 @@ export function PositionsTable({ positions, displayCurrency, fxRate, onValuation
                           placeholder={`Value in ${displayCurrency}`}
                           value={valuationInput}
                           onChange={(e) => setValuationInput(e.target.value)}
-                          className="w-32 h-7 text-xs"
+                          className="w-28 h-7 text-xs"
                           autoFocus
                         />
                         <Button size="sm" className="h-7 text-xs" disabled={saving} onClick={() => saveValuation(p.assetId)}>

@@ -102,17 +102,17 @@ export default function PortfolioPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Portfolio</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {filteredPositions.length} position{filteredPositions.length !== 1 ? "s" : ""}
             {updatedAt && (
-              <span className="ml-2">· prices as of {updatedAt}</span>
+              <span className="ml-2 hidden sm:inline">· prices as of {updatedAt}</span>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <AccountFilter accounts={accounts} value={accountFilter} onChange={handleFilterChange} />
           <CategoryFilter value={categoryFilter} onChange={setCategoryFilter} availableCategories={availableCategories} />
           <CurrencySelector value={currency} onChange={setCurrency} />
@@ -122,25 +122,25 @@ export default function PortfolioPage() {
             onClick={refreshPrices}
             disabled={refreshLoading || snapshotLoading}
           >
-            {refreshLoading ? "Refreshing..." : "Refresh prices"}
+            {refreshLoading ? "Refreshing..." : "Refresh"}
           </Button>
           <Button
             size="sm"
             onClick={takeSnapshot}
             disabled={snapshotLoading || refreshLoading}
           >
-            {snapshotLoading ? "Saving..." : "Take snapshot"}
+            {snapshotLoading ? "Saving..." : "Snapshot"}
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="bg-violet-50 border-violet-100 shadow-none">
           <CardHeader className="pb-1">
             <CardTitle className="text-xs font-medium text-violet-400 uppercase tracking-wide">Total value</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold text-violet-900">{loading ? "..." : totalDisplay}</p>
+            <p className="text-2xl sm:text-3xl font-semibold text-violet-900 truncate">{loading ? "..." : totalDisplay}</p>
           </CardContent>
         </Card>
 
@@ -149,7 +149,7 @@ export default function PortfolioPage() {
             <CardTitle className={`text-xs font-medium uppercase tracking-wide ${isPositive ? "text-emerald-400" : "text-rose-400"}`}>Total P&L</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={`text-3xl font-semibold ${isPositive ? "text-emerald-700" : "text-rose-700"}`}>
+            <p className={`text-2xl sm:text-3xl font-semibold truncate ${isPositive ? "text-emerald-700" : "text-rose-700"}`}>
               {loading || totalPlUsd === null ? "..." : (totalPlUsd * fxRate).toLocaleString("en-CA", {
                 style: "currency",
                 currency,
@@ -164,7 +164,7 @@ export default function PortfolioPage() {
             <CardTitle className={`text-xs font-medium uppercase tracking-wide ${isPositive ? "text-sky-400" : "text-orange-400"}`}>P&L %</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center gap-2">
-            <p className={`text-3xl font-semibold ${isPositive ? "text-sky-700" : "text-orange-700"}`}>
+            <p className={`text-2xl sm:text-3xl font-semibold ${isPositive ? "text-sky-700" : "text-orange-700"}`}>
               {loading || totalPlPct === null ? "..." : `${totalPlPct >= 0 ? "+" : ""}${totalPlPct.toFixed(2)}%`}
             </p>
             {!loading && totalPlPct !== null && (
