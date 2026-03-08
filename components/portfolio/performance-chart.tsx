@@ -45,7 +45,7 @@ export function PerformanceChart({ displayCurrency, fxRate }: Props) {
   const first = converted[0]?.value ?? 0;
   const last = converted[converted.length - 1]?.value ?? 0;
   const isPositive = last >= first;
-  const color = isPositive ? "#22c55e" : "#ef4444";
+  const color = isPositive ? "#34d399" : "#fb7185";
 
   function formatCurrency(v: number) {
     return v.toLocaleString("en-CA", {
@@ -59,14 +59,17 @@ export function PerformanceChart({ displayCurrency, fxRate }: Props) {
     <div className="flex flex-col gap-4">
       <div className="flex justify-end gap-1">
         {PERIODS.map((p) => (
-          <Button
+          <button
             key={p}
-            variant={period === p ? "default" : "outline"}
-            size="sm"
             onClick={() => setPeriod(p)}
+            className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+              period === p
+                ? "bg-violet-100 text-violet-700"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
             {p}
-          </Button>
+          </button>
         ))}
       </div>
 

@@ -135,21 +135,21 @@ export default function PortfolioPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <Card>
+        <Card className="bg-violet-50 border-violet-100 shadow-none">
           <CardHeader className="pb-1">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total value</CardTitle>
+            <CardTitle className="text-xs font-medium text-violet-400 uppercase tracking-wide">Total value</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold">{loading ? "..." : totalDisplay}</p>
+            <p className="text-3xl font-semibold text-violet-900">{loading ? "..." : totalDisplay}</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={`shadow-none border-0 ${isPositive ? "bg-emerald-50" : "bg-rose-50"}`}>
           <CardHeader className="pb-1">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total P&L</CardTitle>
+            <CardTitle className={`text-xs font-medium uppercase tracking-wide ${isPositive ? "text-emerald-400" : "text-rose-400"}`}>Total P&L</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={`text-3xl font-semibold ${isPositive ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
+            <p className={`text-3xl font-semibold ${isPositive ? "text-emerald-700" : "text-rose-700"}`}>
               {loading || totalPlUsd === null ? "..." : (totalPlUsd * fxRate).toLocaleString("en-CA", {
                 style: "currency",
                 currency,
@@ -159,16 +159,16 @@ export default function PortfolioPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={`shadow-none border-0 ${isPositive ? "bg-sky-50" : "bg-orange-50"}`}>
           <CardHeader className="pb-1">
-            <CardTitle className="text-sm font-medium text-muted-foreground">P&L %</CardTitle>
+            <CardTitle className={`text-xs font-medium uppercase tracking-wide ${isPositive ? "text-sky-400" : "text-orange-400"}`}>P&L %</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center gap-2">
-            <p className={`text-3xl font-semibold ${isPositive ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
+            <p className={`text-3xl font-semibold ${isPositive ? "text-sky-700" : "text-orange-700"}`}>
               {loading || totalPlPct === null ? "..." : `${totalPlPct >= 0 ? "+" : ""}${totalPlPct.toFixed(2)}%`}
             </p>
             {!loading && totalPlPct !== null && (
-              <Badge variant={isPositive ? "default" : "destructive"} className="text-xs">
+              <Badge className={`text-xs border-0 ${isPositive ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
                 {isPositive ? "gain" : "loss"}
               </Badge>
             )}
@@ -176,9 +176,9 @@ export default function PortfolioPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="shadow-none border border-border">
         <CardHeader>
-          <CardTitle className="text-base">Performance</CardTitle>
+          <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Performance</CardTitle>
         </CardHeader>
         <CardContent>
           <PerformanceChart displayCurrency={currency} fxRate={fxRate} />
@@ -186,7 +186,7 @@ export default function PortfolioPage() {
       </Card>
 
       <div>
-        <h2 className="text-lg font-medium mb-4">Positions</h2>
+        <h2 className="text-lg font-semibold mb-4">Positions</h2>
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
         ) : (

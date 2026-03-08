@@ -20,25 +20,28 @@ export function Nav() {
   }
 
   return (
-    <nav className="border-b bg-background">
+    <nav className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
       <div className="mx-auto max-w-6xl px-4 flex h-14 items-center gap-6">
-        <span className="font-semibold text-sm tracking-tight">my_finary</span>
-        <div className="flex gap-4 flex-1">
+        <Link href="/" className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-violet-400 inline-block" />
+          <span className="font-semibold text-sm tracking-tight">my_finary</span>
+        </Link>
+        <div className="flex gap-1 flex-1">
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={
                 pathname === link.href
-                  ? "text-sm font-medium text-foreground"
-                  : "text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  ? "text-sm font-medium px-3 py-1.5 rounded-md bg-violet-50 text-violet-700"
+                  : "text-sm text-muted-foreground hover:text-foreground hover:bg-muted px-3 py-1.5 rounded-md transition-colors"
               }
             >
               {link.label}
             </Link>
           ))}
         </div>
-        <Button variant="ghost" size="sm" onClick={logout} className="text-muted-foreground">
+        <Button variant="ghost" size="sm" onClick={logout} className="text-muted-foreground text-xs">
           Sign out
         </Button>
       </div>

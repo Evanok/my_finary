@@ -6,6 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Position } from "@/lib/portfolio/positions";
 
+const CATEGORY_STYLES: Record<string, string> = {
+  crypto:      "bg-violet-100 text-violet-700",
+  stock:       "bg-sky-100 text-sky-700",
+  etf:         "bg-teal-100 text-teal-700",
+  cash:        "bg-yellow-100 text-yellow-700",
+  real_estate: "bg-orange-100 text-orange-700",
+  bond:        "bg-blue-100 text-blue-700",
+  reit:        "bg-pink-100 text-pink-700",
+  other:       "bg-gray-100 text-gray-600",
+};
+
 interface Props {
   positions: Position[];
   displayCurrency: string;
@@ -52,12 +63,12 @@ export function PositionsTable({ positions, displayCurrency, fxRate, onValuation
   }
 
   return (
-    <div className="rounded-md border">
+    <div className="rounded-xl border bg-white overflow-hidden">
       <table className="w-full text-sm">
-        <thead className="bg-muted">
-          <tr>
+        <thead>
+          <tr className="border-b bg-muted/40">
             {["Asset", "Category", "Qty", "Avg cost", "Current price", "Value", "P&L", "P&L %", ""].map((h, i) => (
-              <th key={i} className="px-4 py-3 text-left font-medium">{h}</th>
+              <th key={i} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
             ))}
           </tr>
         </thead>
@@ -66,34 +77,35 @@ export function PositionsTable({ positions, displayCurrency, fxRate, onValuation
             const positive = (p.plUsd ?? 0) >= 0;
             const isRealEstate = p.category.toLowerCase() === "real_estate";
             const isEditing = editingId === p.assetId;
+            const categoryStyle = CATEGORY_STYLES[p.category.toLowerCase()] ?? CATEGORY_STYLES.other;
             return (
-              <tr key={p.assetId} className="border-t hover:bg-muted/50">
+              <tr key={p.assetId} className="border-t hover:bg-muted/20 transition-colors">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{p.symbol}</span>
+                    <span className="font-semibold">{p.symbol}</span>
                     {!p.priceValidated && (
-                      <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-400">
-                        unvalidated
+                      <Badge className="text-xs bg-amber-100 text-amber-600 border-0">
+                        ~
                       </Badge>
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground">{p.name}</span>
                 </td>
-                <td className="px-4 py-3 capitalize text-muted-foreground">{p.category}</td>
-                <td className="px-4 py-3">{p.quantity.toLocaleString()}</td>
-                <td className="px-4 py-3 text-muted-foreground">{fmt(p.avgCostUsd)}</td>
                 <td className="px-4 py-3">
-                  {p.currentPriceUsd === null ? (
-                    <span className="text-muted-foreground">—</span>
-                  ) : (
-                    fmt(p.currentPriceUsd)
-                  )}
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${categoryStyle}`}>
+                    {p.category.replace("_", " ")}
+                  </span>
                 </td>
-                <td className="px-4 py-3 font-medium">{fmt(p.valueUsd)}</td>
-                <td className={`px-4 py-3 font-medium ${positive ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
+                <td className="px-4 py-3 text-muted-foreground">{p.quantity.toLocaleString()}</td>
+                <td className="px-4 py-3 text-muted-foreground">{fmt(p.avgCostUsd)}</td>
+                <td className="px-4 py-3 text-muted-foreground">
+                  {p.currentPriceUsd === null ? "—" : fmt(p.currentPriceUsd)}
+                </td>
+                <td className="px-4 py-3 font-semibold">{fmt(p.valueUsd)}</td>
+                <td className={`px-4 py-3 font-medium ${positive ? "text-emerald-600" : "text-rose-500"}`}>
                   {fmt(p.plUsd)}
                 </td>
-                <td className={`px-4 py-3 font-medium ${positive ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
+                <td className={`px-4 py-3 font-medium ${positive ? "text-emerald-600" : "text-rose-500"}`}>
                   {fmtPct(p.plPct)}
                 </td>
                 <td className="px-4 py-3">
