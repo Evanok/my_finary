@@ -43,3 +43,7 @@ next-env.d.ts
 /app/generated/prisma
 
 *.db
+# Personal conversion scripts with hardcoded transaction data
+scripts/convert_wealthsimple.js
+scripts/convert_revolut.js
+scripts/add_xau.js
