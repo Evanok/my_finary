@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 
-const PERIODS = ["1w", "1m", "1y", "all"] as const;
+const PERIODS = ["1m", "all"] as const;
 type Period = typeof PERIODS[number];
 
 interface SnapshotPoint {
@@ -26,7 +26,7 @@ interface Props {
 }
 
 export function PerformanceChart({ displayCurrency, fxRate }: Props) {
-  const [period, setPeriod] = useState<Period>("1m");
+  const [period, setPeriod] = useState<Period>("all");
   const [data, setData] = useState<SnapshotPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
