@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client"
   output   = "../app/generated/prisma"
@@ -8,4 +5,50 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+}
+
+model Account {
+  id           String        @id @default(cuid())
+  name         String
+  institution  String
+  type         String        // CELI, REER, TFSA, taxable, etc.
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+}
+
+model Asset {
+  id           String        @id @default(cuid())
+  symbol       String        @unique
+  name         String
+  category     String        // ETF, stock, crypto, etc.
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+  priceCache   PriceCache[]
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  accountId String
+  assetId   String
+  date      DateTime
+  quantity  Float
+  price     Float    // purchase price per unit
+  type      String   // buy, sell
+  createdAt DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id])
+  asset   Asset   @relation(fields: [assetId], references: [id])
+}
+
+model PriceCache {
+  id        String   @id @default(cuid())
+  assetId   String
+  source    String   // yahoo, finnhub, coingecko, coincap
+  price     Float
+  fetchedAt DateTime @default(now())
+  validated Boolean  @default(false)
+
+  asset Asset @relation(fields: [assetId], references: [id])
+
+  @@unique([assetId, source])
 }
