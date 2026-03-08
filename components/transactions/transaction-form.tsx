@@ -45,12 +45,13 @@ export function TransactionForm({ onCreated }: Props) {
     fetch("/api/accounts").then((r) => r.json()).then(setAccounts);
   }, []);
 
+  const selectedAccount = accounts.find((a) => a.id === accountId);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    // Upsert asset first
     const assetRes = await fetch("/api/assets", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -93,7 +94,11 @@ export function TransactionForm({ onCreated }: Props) {
           <Label>Account</Label>
           <Select value={accountId} onValueChange={(v) => v && setAccountId(v)} required>
             <SelectTrigger>
-              <SelectValue placeholder="Select account" />
+              <SelectValue placeholder="Select account">
+                {selectedAccount
+                  ? `${selectedAccount.institution} — ${selectedAccount.type}`
+                  : null}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {accounts.map((a) => (
