@@ -5,9 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CurrencySelector } from "@/components/portfolio/currency-selector";
+import { AccountFilter, resolveAccountIds } from "@/components/portfolio/account-filter";
 import { PerformanceChart } from "@/components/portfolio/performance-chart";
 import { PositionsTable } from "@/components/portfolio/positions-table";
 import type { Position } from "@/lib/portfolio/positions";
+
+interface Account {
+  id: string;
+  name: string;
+  institution: string;
+  type: string;
+}
 
 interface PortfolioData {
   totalUsd: number;
@@ -22,10 +30,14 @@ export default function PortfolioPage() {
   const [snapshotLoading, setSnapshotLoading] = useState(false);
   const [currency, setCurrency] = useState("CAD");
   const [fxRate, setFxRate] = useState(1);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountFilter, setAccountFilter] = useState("all");
 
-  const fetchPortfolio = useCallback(async () => {
+  const fetchPortfolio = useCallback(async (filter = "all", allAccounts: Account[] = []) => {
     setLoading(true);
-    const res = await fetch("/api/portfolio");
+    const ids = resolveAccountIds(allAccounts, filter);
+    const url = ids ? `/api/portfolio?accountIds=${ids.join(",")}` : "/api/portfolio";
+    const res = await fetch(url);
     const json = await res.json();
     setData(json);
     setLoading(false);
@@ -39,19 +51,31 @@ export default function PortfolioPage() {
       .catch(() => setFxRate(1));
   }, [currency]);
 
-  useEffect(() => { fetchPortfolio(); }, [fetchPortfolio]);
+  useEffect(() => {
+    fetch("/api/accounts")
+      .then((r) => r.json())
+      .then((data: Account[]) => {
+        setAccounts(data);
+        fetchPortfolio("all", data);
+      });
+  }, [fetchPortfolio]);
+
+  function handleFilterChange(filter: string) {
+    setAccountFilter(filter);
+    fetchPortfolio(filter, accounts);
+  }
 
   async function refreshPrices() {
     setRefreshLoading(true);
     await fetch("/api/portfolio/refresh", { method: "POST" });
-    await fetchPortfolio();
+    await fetchPortfolio(accountFilter, accounts);
     setRefreshLoading(false);
   }
 
   async function takeSnapshot() {
     setSnapshotLoading(true);
     await fetch("/api/portfolio/snapshot", { method: "POST" });
-    await fetchPortfolio();
+    await fetchPortfolio(accountFilter, accounts);
     setSnapshotLoading(false);
   }
 
@@ -83,6 +107,7 @@ export default function PortfolioPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <AccountFilter accounts={accounts} value={accountFilter} onChange={handleFilterChange} />
           <CurrencySelector value={currency} onChange={setCurrency} />
           <Button
             variant="outline"

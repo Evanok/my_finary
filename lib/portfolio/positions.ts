@@ -18,8 +18,9 @@ export interface Position {
   priceValidated: boolean;
 }
 
-export async function computePositions(): Promise<Position[]> {
+export async function computePositions(accountIds?: string[]): Promise<Position[]> {
   const transactions = await prisma.transaction.findMany({
+    where: accountIds && accountIds.length > 0 ? { accountId: { in: accountIds } } : undefined,
     include: { asset: true },
     orderBy: { date: "asc" },
   });
