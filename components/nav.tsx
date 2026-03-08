@@ -12,12 +12,13 @@ const links = [
 
 export function Nav() {
   const pathname = usePathname();
-  const router = useRouter();
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    window.location.href = "/login";
   }
+
+  if (pathname === "/login") return null;
 
   return (
     <nav className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
