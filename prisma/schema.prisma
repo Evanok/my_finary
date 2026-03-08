@@ -61,3 +61,11 @@ model FxRateCache {
   rate      Float    // how many USD for 1 unit of base currency
   fetchedAt DateTime @default(now())
 }
+
+model PortfolioSnapshot {
+  id         String   @id @default(cuid())
+  date       DateTime @unique // one snapshot per day (date only, time = 00:00:00)
+  totalUsd   Float    // total portfolio value in USD at snapshot time
+  breakdown  String   // JSON: { assetId, symbol, quantity, priceUsd, valueUsd }[]
+  createdAt  DateTime @default(now())
+}

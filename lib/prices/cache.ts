@@ -1,29 +1,14 @@
 import { prisma } from "@/lib/prisma";
 
-// TTL in minutes per asset category
-const TTL: Record<string, number> = {
-  crypto: 5,
-  default: 15, // stocks, ETFs
-};
-
-export function getTtlMinutes(category: string): number {
-  return TTL[category.toLowerCase()] ?? TTL.default;
-}
-
+// Prices are cached indefinitely — only refreshed on manual request or daily snapshot.
 export async function getCachedPriceUsd(
   assetId: string,
   source: string,
-  category: string
 ): Promise<number | null> {
-  const ttlMinutes = getTtlMinutes(category);
-  const cutoff = new Date(Date.now() - ttlMinutes * 60 * 1000);
-
   const cached = await prisma.priceCache.findUnique({
     where: { assetId_source: { assetId, source } },
   });
-
-  if (!cached || cached.fetchedAt < cutoff) return null;
-  return cached.priceUsd;
+  return cached?.priceUsd ?? null;
 }
 
 export async function upsertCachedPriceUsd(
@@ -41,4 +26,18 @@ export async function upsertCachedPriceUsd(
   } catch {
     // Cache write failure is non-blocking — price is still returned to caller
   }
+}
+
+// Clear all cached prices to force a full re-fetch on next request.
+export async function clearPriceCache(): Promise<void> {
+  await prisma.priceCache.deleteMany();
+}
+
+// Returns the most recent fetchedAt across all cached prices.
+export async function lastPriceUpdate(): Promise<Date | null> {
+  const latest = await prisma.priceCache.findFirst({
+    orderBy: { fetchedAt: "desc" },
+    select: { fetchedAt: true },
+  });
+  return latest?.fetchedAt ?? null;
 }
