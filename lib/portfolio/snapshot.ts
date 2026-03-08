@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { clearPriceCache } from "@/lib/prices/cache";
 import { computePositions, sumPortfolioUsd } from "./positions";
 
 function toSnapshotDate(date: Date): Date {
@@ -8,16 +7,13 @@ function toSnapshotDate(date: Date): Date {
   return d;
 }
 
-// Clear price cache then recompute positions with fresh prices from external APIs.
+// Re-fetch all prices from external APIs and update the cache (no clearing — stale data kept as fallback).
 export async function refreshPrices(): Promise<void> {
-  await clearPriceCache();
-  await computePositions(); // repopulates cache as a side effect
+  await computePositions(undefined, true);
 }
 
 export async function takeSnapshot(): Promise<{ totalUsd: number; date: Date }> {
-  // Always fetch fresh prices when taking a snapshot
-  await clearPriceCache();
-  const positions = await computePositions();
+  const positions = await computePositions(undefined, true);
   const totalUsd = sumPortfolioUsd(positions);
   const date = toSnapshotDate(new Date());
 

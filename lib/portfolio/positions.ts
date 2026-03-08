@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { getAssetPrice } from "@/lib/prices";
+import { getAssetPrice, CRYPTO_ID_MAP } from "@/lib/prices";
 import { toUsd } from "@/lib/prices/fx";
+import { fetchCoinGeckoPrices } from "@/lib/prices/coingecko";
+import { upsertCachedPriceUsd } from "@/lib/prices/cache";
 
 export interface Position {
   assetId: string;
@@ -18,7 +20,7 @@ export interface Position {
   priceValidated: boolean;
 }
 
-export async function computePositions(accountIds?: string[]): Promise<Position[]> {
+export async function computePositions(accountIds?: string[], forceRefresh = false): Promise<Position[]> {
   const transactions = await prisma.transaction.findMany({
     where: accountIds && accountIds.length > 0 ? { accountId: { in: accountIds } } : undefined,
     include: { asset: true },
@@ -51,36 +53,57 @@ export async function computePositions(accountIds?: string[]): Promise<Position[
     }
   }
 
-  // Fetch current prices in parallel
   const entries = [...map.entries()].filter(([, v]) => v.quantity > 0.000001);
 
-  const positions = await Promise.all(
-    entries.map(async ([assetId, { asset, quantity, totalCostUsd }]) => {
-      const result = await getAssetPrice(assetId, asset.symbol, asset.category, asset.nativeCurrency);
-      const currentPriceUsd = result?.priceUsd ?? null;
-      const valueUsd = currentPriceUsd !== null ? currentPriceUsd * quantity : null;
-      const costBasisUsd = totalCostUsd;
-      const avgCostUsd = quantity > 0 ? costBasisUsd / quantity : 0;
-      const plUsd = valueUsd !== null ? valueUsd - costBasisUsd : null;
-      const plPct = plUsd !== null && costBasisUsd > 0 ? (plUsd / costBasisUsd) * 100 : null;
+  // Pre-fetch all crypto prices in one CoinGecko batch call to avoid per-asset rate limits.
+  // Always runs when forceRefresh=true, otherwise only for assets not yet in cache.
+  const cryptoEntries = entries.filter(([, v]) => v.asset.category.toLowerCase() === "crypto");
+  const coinIds = cryptoEntries.map(([, v]) => CRYPTO_ID_MAP[v.asset.symbol.toUpperCase()] ?? v.asset.symbol.toLowerCase());
+  const batchPrices = await fetchCoinGeckoPrices(coinIds);
 
-      return {
-        assetId,
-        symbol: asset.symbol,
-        name: asset.name,
-        category: asset.category,
-        nativeCurrency: asset.nativeCurrency,
-        quantity,
-        avgCostUsd,
-        currentPriceUsd,
-        valueUsd,
-        costBasisUsd,
-        plUsd,
-        plPct,
-        priceValidated: result?.validated ?? false,
-      } satisfies Position;
+  // Populate cache from batch results so getAssetPrice finds them
+  await Promise.all(
+    cryptoEntries.map(async ([assetId, { asset }], i) => {
+      const coinId = coinIds[i];
+      const priceUsd = batchPrices[coinId];
+      if (priceUsd !== undefined) {
+        await upsertCachedPriceUsd(assetId, "coingecko", priceUsd, false);
+      }
     })
   );
+
+  const positions: Position[] = [];
+  for (const [assetId, { asset, quantity, totalCostUsd }] of entries) {
+    let result = await getAssetPrice(assetId, asset.symbol, asset.category, asset.nativeCurrency, forceRefresh);
+    // Real estate with no manual valuation yet: use avg cost as current price (P&L = 0)
+    if (result === null && asset.category.toLowerCase() === "real_estate") {
+      const fxRate = await toUsd(asset.nativeCurrency);
+      const avgCostUsd = totalCostUsd / quantity;
+      if (fxRate !== null) result = { priceUsd: avgCostUsd, validated: false, sources: ["cost_basis"] };
+    }
+    const currentPriceUsd = result?.priceUsd ?? null;
+    const valueUsd = currentPriceUsd !== null ? currentPriceUsd * quantity : null;
+    const costBasisUsd = totalCostUsd;
+    const avgCostUsd = quantity > 0 ? costBasisUsd / quantity : 0;
+    const plUsd = valueUsd !== null ? valueUsd - costBasisUsd : null;
+    const plPct = plUsd !== null && costBasisUsd > 0 ? (plUsd / costBasisUsd) * 100 : null;
+
+    positions.push({
+      assetId,
+      symbol: asset.symbol,
+      name: asset.name,
+      category: asset.category,
+      nativeCurrency: asset.nativeCurrency,
+      quantity,
+      avgCostUsd,
+      currentPriceUsd,
+      valueUsd,
+      costBasisUsd,
+      plUsd,
+      plPct,
+      priceValidated: result?.validated ?? false,
+    } satisfies Position);
+  }
 
   return positions.sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
 }

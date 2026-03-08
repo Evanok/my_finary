@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const CATEGORIES = ["stock", "etf", "crypto", "bond", "reit", "other"];
+const CATEGORIES = ["stock", "etf", "crypto", "cash", "real_estate", "bond", "reit", "other"];
 const CURRENCIES = ["USD", "CAD", "EUR"];
 const TRANSACTION_TYPES = ["buy", "sell"];
 

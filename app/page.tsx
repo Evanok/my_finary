@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CurrencySelector } from "@/components/portfolio/currency-selector";
 import { AccountFilter, resolveAccountIds } from "@/components/portfolio/account-filter";
+import { CategoryFilter, matchesCategory } from "@/components/portfolio/category-filter";
 import { PerformanceChart } from "@/components/portfolio/performance-chart";
 import { PositionsTable } from "@/components/portfolio/positions-table";
 import type { Position } from "@/lib/portfolio/positions";
@@ -32,6 +33,7 @@ export default function PortfolioPage() {
   const [fxRate, setFxRate] = useState(1);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountFilter, setAccountFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   const fetchPortfolio = useCallback(async (filter = "all", allAccounts: Account[] = []) => {
     setLoading(true);
@@ -79,14 +81,18 @@ export default function PortfolioPage() {
     setSnapshotLoading(false);
   }
 
-  const totalDisplay = data ? (data.totalUsd * fxRate).toLocaleString("en-CA", {
+  const allPositions = data?.positions ?? [];
+  const availableCategories = [...new Set(allPositions.map((p) => p.category.toLowerCase()))];
+  const filteredPositions = allPositions.filter((p) => matchesCategory(p.category, categoryFilter));
+  const filteredTotalUsd = filteredPositions.reduce((s, p) => s + (p.valueUsd ?? 0), 0);
+  const totalCostUsd = filteredPositions.reduce((s, p) => s + p.costBasisUsd, 0);
+  const totalPlUsd = data ? filteredTotalUsd - totalCostUsd : null;
+
+  const totalDisplay = data ? (filteredTotalUsd * fxRate).toLocaleString("en-CA", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
   }) : "—";
-
-  const totalCostUsd = data?.positions.reduce((s, p) => s + p.costBasisUsd, 0) ?? 0;
-  const totalPlUsd = data ? data.totalUsd - totalCostUsd : null;
   const totalPlPct = totalCostUsd > 0 && totalPlUsd !== null ? (totalPlUsd / totalCostUsd) * 100 : null;
   const isPositive = (totalPlUsd ?? 0) >= 0;
 
@@ -100,7 +106,7 @@ export default function PortfolioPage() {
         <div>
           <h1 className="text-2xl font-semibold">Portfolio</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {data?.positions.length ?? 0} position{(data?.positions.length ?? 0) !== 1 ? "s" : ""}
+            {filteredPositions.length} position{filteredPositions.length !== 1 ? "s" : ""}
             {updatedAt && (
               <span className="ml-2">· prices as of {updatedAt}</span>
             )}
@@ -108,6 +114,7 @@ export default function PortfolioPage() {
         </div>
         <div className="flex items-center gap-3">
           <AccountFilter accounts={accounts} value={accountFilter} onChange={handleFilterChange} />
+          <CategoryFilter value={categoryFilter} onChange={setCategoryFilter} availableCategories={availableCategories} />
           <CurrencySelector value={currency} onChange={setCurrency} />
           <Button
             variant="outline"
@@ -184,9 +191,10 @@ export default function PortfolioPage() {
           <p className="text-sm text-muted-foreground">Loading...</p>
         ) : (
           <PositionsTable
-            positions={data?.positions ?? []}
+            positions={filteredPositions}
             displayCurrency={currency}
             fxRate={fxRate}
+            onValuationUpdated={() => fetchPortfolio(accountFilter, accounts)}
           />
         )}
       </div>
