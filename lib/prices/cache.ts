@@ -10,7 +10,7 @@ export function getTtlMinutes(category: string): number {
   return TTL[category.toLowerCase()] ?? TTL.default;
 }
 
-export async function getCachedPrice(
+export async function getCachedPriceUsd(
   assetId: string,
   source: string,
   category: string
@@ -23,20 +23,20 @@ export async function getCachedPrice(
   });
 
   if (!cached || cached.fetchedAt < cutoff) return null;
-  return cached.price;
+  return cached.priceUsd;
 }
 
-export async function upsertCachedPrice(
+export async function upsertCachedPriceUsd(
   assetId: string,
   source: string,
-  price: number,
+  priceUsd: number,
   validated: boolean
 ): Promise<void> {
   try {
     await prisma.priceCache.upsert({
       where: { assetId_source: { assetId, source } },
-      update: { price, fetchedAt: new Date(), validated },
-      create: { assetId, source, price, validated },
+      update: { priceUsd, fetchedAt: new Date(), validated },
+      create: { assetId, source, priceUsd, validated },
     });
   } catch {
     // Cache write failure is non-blocking — price is still returned to caller

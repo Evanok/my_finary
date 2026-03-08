@@ -2,7 +2,7 @@ const BASE_URL = "https://rest.coincap.io/v3";
 const COINCAP_API_KEY = process.env.COINCAP_API_KEY ?? "";
 
 // CoinCap uses its own asset IDs (e.g. "bitcoin", "ethereum").
-// Pass the CoinCap asset ID as the symbol for crypto assets.
+// Returns price in USD (CoinCap natively returns USD).
 export async function fetchCoinCapPrice(assetId: string): Promise<number | null> {
   if (!COINCAP_API_KEY) return null;
   try {
@@ -14,24 +14,7 @@ export async function fetchCoinCapPrice(assetId: string): Promise<number | null>
     const data = await res.json();
     const priceUsd = data.data?.priceUsd;
     if (!priceUsd) return null;
-    // CoinCap returns USD — convert to CAD
-    const cadRate = await fetchUsdToCad();
-    if (!cadRate) return null;
-    return parseFloat(priceUsd) * cadRate;
-  } catch {
-    return null;
-  }
-}
-
-async function fetchUsdToCad(): Promise<number | null> {
-  try {
-    const res = await fetch(
-      "https://api.frankfurter.app/latest?from=USD&to=CAD",
-      { next: { revalidate: 3600 } }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.rates?.CAD ?? null;
+    return parseFloat(priceUsd);
   } catch {
     return null;
   }

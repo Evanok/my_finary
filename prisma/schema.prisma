@@ -17,13 +17,14 @@ model Account {
 }
 
 model Asset {
-  id           String        @id @default(cuid())
-  symbol       String        @unique
-  name         String
-  category     String        // ETF, stock, crypto, etc.
-  createdAt    DateTime      @default(now())
-  transactions Transaction[]
-  priceCache   PriceCache[]
+  id             String        @id @default(cuid())
+  symbol         String        @unique
+  name           String
+  category       String        // ETF, stock, crypto, etc.
+  nativeCurrency String        @default("USD") // currency returned by the exchange (USD, CAD, EUR)
+  createdAt      DateTime      @default(now())
+  transactions   Transaction[]
+  priceCache     PriceCache[]
 }
 
 model Transaction {
@@ -32,7 +33,8 @@ model Transaction {
   assetId   String
   date      DateTime
   quantity  Float
-  price     Float    // purchase price per unit
+  price     Float    // purchase price per unit in original currency
+  currency  String   @default("USD") // currency of the transaction at time of purchase
   type      String   // buy, sell
   createdAt DateTime @default(now())
 
@@ -44,11 +46,18 @@ model PriceCache {
   id        String   @id @default(cuid())
   assetId   String
   source    String   // yahoo, finnhub, coingecko, coincap
-  price     Float
+  priceUsd  Float    // always stored in USD
   fetchedAt DateTime @default(now())
   validated Boolean  @default(false)
 
   asset Asset @relation(fields: [assetId], references: [id])
 
   @@unique([assetId, source])
+}
+
+model FxRateCache {
+  id        String   @id @default(cuid())
+  pair      String   @unique // e.g. "EUR/USD", "CAD/USD"
+  rate      Float    // how many USD for 1 unit of base currency
+  fetchedAt DateTime @default(now())
 }
