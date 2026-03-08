@@ -6,97 +6,147 @@ Personal portfolio tracker inspired by Finary. Web app to monitor wealth and inv
 
 Track personal investments by importing CSV files or entering transactions manually. Monitor portfolio performance over time with charts.
 
-## Core Features
-
-- Account management (institution + account type, e.g. WealthSimple + CELI)
-- Transaction entry: date, purchase price, quantity, asset name, category (ETF, stock, crypto, etc.)
-- CSV import for bulk transaction loading
-- Portfolio global view with current valuations
-- Performance charts: 1d, 1w, 1m, 1y, all
-
 ## Tech Stack
 
 - **Framework**: Next.js 14 (App Router, full-stack)
-- **Database**: SQLite via Prisma ORM
-- **UI**: shadcn/ui + Tailwind CSS
+- **Database**: SQLite via Prisma 7 + `@prisma/adapter-better-sqlite3`
+- **UI**: shadcn/ui + Tailwind CSS v4
 - **Charts**: Recharts
+- **CSV parsing**: papaparse
 - **Package manager**: npm
+
+### Prisma 7 specifics
+
+- No `url` in `schema.prisma` — configured via `prisma.config.ts`
+- Requires driver adapter: `PrismaBetterSqlite3` from `@prisma/adapter-better-sqlite3`
+- PrismaClient instantiated with `{ adapter }` option in `lib/prisma.ts`
+- Generated client at `@/app/generated/prisma/client`
+
+### yahoo-finance2 v3
+
+Must instantiate: `const yf = new YahooFinance({ suppressNotices: ['yahooSurvey'] })`. Cannot call methods on the default export directly.
+
+## Core Features
+
+- Account management (institution + account type, e.g. WealthSimple CELI, Revolut Taxable)
+- Transaction entry: date, quantity, price, currency, asset (symbol + category)
+- CSV import for bulk transaction loading
+- Portfolio view with P&L, per-position breakdown
+- Account filter: view all accounts, by institution, or by specific account
+- Performance chart (1w/1m/1y/all) via daily snapshots
+- Multi-currency display: USD, CAD, EUR
 
 ## Price Sources (dual-source validation)
 
-Every price fetch MUST use two independent sources. If prices diverge by more than 0.5%, mark the data as unvalidated rather than displaying silently wrong data.
+Every price fetch uses two independent sources. If prices diverge by more than 0.5%, mark as `validated=false`.
 
-| Category   | Primary source              | Secondary source          |
-|------------|-----------------------------|---------------------------|
-| Stocks/ETFs | yahoo-finance2 (npm, no key) | Finnhub (free: 60 req/min) |
-| Crypto     | CoinGecko (free: 30 req/min) | CoinCap.io (free, no key) |
+| Category    | Primary source               | Secondary source            |
+|-------------|------------------------------|-----------------------------|
+| Stocks/ETFs | yahoo-finance2 (no key)      | Finnhub (FINNHUB_API_KEY)   |
+| Crypto      | CoinGecko (free, 30 req/min) | CoinCap (COINCAP_API_KEY)   |
 
-## Currency handling
+FX rates: `frankfurter.app` (free, no key).
 
-Supported display currencies: **USD, CAD, EUR** (user preference, stored in localStorage).
+## Currency Handling
 
-**Rule: all prices stored internally in USD.**
+Supported display currencies: USD, CAD, EUR.
 
-Yahoo Finance returns prices in the native exchange currency (TSX = CAD, NYSE = USD, Euronext = EUR).
-At fetch time, normalize to USD using the current FX rate before writing to cache.
-At display time, convert from USD to the user's selected currency using the cached FX rate.
+**All prices stored internally in USD.**
 
-FX rates source: `frankfurter.app` (free, no key, no quota issues).
+Yahoo Finance returns native exchange currency (TSX = CAD, NYSE = USD, etc.).
+At fetch time: normalize to USD using current FX rate before writing to cache.
+At display time: convert from USD to user's selected currency.
 
-### FX Rate Cache (SQLite)
+### Price Cache (no TTL)
 
-Model: `FxRateCache { pair, rate, fetchedAt }` — e.g. pair = "EUR/USD", "CAD/USD"
+Prices are NOT refreshed on a timer. They are only updated:
+1. When the user clicks "Refresh prices" (clears cache, re-fetches all)
+2. When a daily snapshot is taken (same as above, then persists snapshot)
 
-TTL: 1 hour (FX rates move slowly compared to asset prices)
+Model: `PriceCache { assetId, source, priceUsd, fetchedAt, validated }` — @@unique([assetId, source])
 
-### Price Cache (SQLite)
+### FX Rate Cache
 
-Model: `PriceCache { assetId, source, price, fetchedAt, validated }` — price always in USD
-
-TTL rules:
-- Stocks/ETFs: 15 min during market hours, 12h outside market hours
-- Crypto: 5 min (24/7 market)
-
-Fetch logic:
-1. Check cache — if within TTL, return immediately (no API call)
-2. Otherwise, call both sources in parallel
-3. Normalize each result to USD using FX rate cache
-4. Compare prices, validate (diff < 0.5%), persist to cache in USD
-5. Return validated USD price
-
-This reduces API calls by ~95% under normal usage.
+TTL: 1 hour. Model: `FxRateCache { pair, rate, fetchedAt }` — e.g. pair = "EUR/USD"
 
 ## Data Models
 
-- `Account`: id, name, institution, type (CELI, REER, TFSA, taxable, etc.)
-- `Asset`: id, symbol, name, category (ETF, stock, crypto, etc.), nativeCurrency (USD/CAD/EUR)
+- `Account`: id, name, institution, type (CELI, REER, Taxable, etc.)
+- `Asset`: id, symbol, name, category (etf/stock/crypto), nativeCurrency
 - `Transaction`: id, accountId, assetId, date, quantity, price, currency, type (buy/sell)
 - `PriceCache`: id, assetId, source, priceUsd, fetchedAt, validated
 - `FxRateCache`: id, pair, rate, fetchedAt
+- `PortfolioSnapshot`: id, date (unique), totalUsd, breakdown (JSON), createdAt
 
 ## Project Structure
 
 ```
-src/
-  app/              # Next.js App Router pages and API routes
-    api/
-      prices/       # Price fetching endpoints
-      accounts/
-      transactions/
-  components/       # React components
-  lib/
-    prices/         # Price service: fetch, cache, validate
-      yahoo.ts
-      finnhub.ts
-      coingecko.ts
-      coincap.ts
-      cache.ts
-      index.ts      # Unified price service
-    prisma.ts       # Prisma client singleton
-  types/            # TypeScript types
+app/
+  page.tsx                     # Main portfolio page
+  layout.tsx                   # Root layout with Nav
+  accounts/page.tsx            # Account CRUD
+  transactions/page.tsx        # Transactions list + CSV/manual import
+  api/
+    accounts/route.ts
+    accounts/[id]/route.ts
+    assets/route.ts
+    transactions/route.ts
+    transactions/[id]/route.ts
+    transactions/import/route.ts  # Bulk CSV import (upserts assets + accounts)
+    prices/route.ts
+    portfolio/route.ts            # GET ?accountIds=id1,id2 (optional filter)
+    portfolio/refresh/route.ts    # POST — clears cache + re-fetches prices
+    portfolio/snapshot/route.ts   # POST — takes daily snapshot
+    portfolio/snapshots/route.ts  # GET ?period=1w|1m|1y|all
+components/
+  nav.tsx
+  accounts/account-form.tsx
+  transactions/transaction-form.tsx
+  transactions/csv-import.tsx
+  portfolio/currency-selector.tsx
+  portfolio/account-filter.tsx   # Dropdown: all / by institution / by account
+  portfolio/performance-chart.tsx
+  portfolio/positions-table.tsx
+lib/
+  prisma.ts                    # Prisma singleton with BetterSqlite3 adapter
+  prices/
+    yahoo.ts                   # Returns native currency price
+    finnhub.ts                 # Returns native currency price
+    coingecko.ts               # Returns USD price
+    coincap.ts                 # Returns USD price
+    fx.ts                      # toUsd(currency) — 1h cached FX rates
+    cache.ts                   # getCachedPriceUsd / upsertCachedPriceUsd / clearPriceCache / lastPriceUpdate
+    index.ts                   # getAssetPrice — dual-source, validates, normalizes to USD
+  portfolio/
+    positions.ts               # computePositions(accountIds?) / sumPortfolioUsd
+    snapshot.ts                # refreshPrices / takeSnapshot / getSnapshotSeries
+scripts/
+  convert_revolut.js           # trading_revolut.csv -> revolut_import.csv
+  convert_wealthsimple.js      # Hard-coded WealthSimple transactions -> wealthsimple_import.csv
+  add_xau.js                   # One-off: insert XAU (GC=F) transaction manually
 prisma/
-  schema.prisma     # Data models
+  schema.prisma
+  dev.db
 ```
+
+## CSV Import Format
+
+```
+date,symbol,name,category,native_currency,quantity,price,currency,type,account_institution,account_type
+2024-01-15,AAPL,Apple Inc,stock,USD,10,180.50,USD,buy,WealthSimple,CELI
+```
+
+- `native_currency`: currency the asset trades in (USD for NYSE, CAD for TSX)
+- `currency`: currency the price is recorded in (may differ, e.g. CAD for WealthSimple purchases of USD ETFs)
+- Cost basis in USD = `quantity * price * toUsd(currency)` using current FX rate
+
+## Known Ticker Quirks
+
+- `XDJP` on Revolut = `XDJP.DE` on Yahoo Finance (Frankfurt)
+- `SGM` on Revolut = `SGM.F` on Yahoo Finance (STMicroelectronics Frankfurt)
+- `GC=F` = Gold futures (Yahoo only, validated=false is expected — single source)
+- `KILO.TO` = Purpose Gold Bullion ETF (CAD, TSX)
+- `XETM.TO` = iShares S&P/TSX Energy Transition Materials ETF (CAD, TSX)
 
 ## Code Style
 
