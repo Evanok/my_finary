@@ -31,9 +31,27 @@ Every price fetch MUST use two independent sources. If prices diverge by more th
 | Stocks/ETFs | yahoo-finance2 (npm, no key) | Finnhub (free: 60 req/min) |
 | Crypto     | CoinGecko (free: 30 req/min) | CoinCap.io (free, no key) |
 
-## Price Cache (SQLite)
+## Currency handling
 
-Model: `PriceCache { assetId, source, price, fetchedAt, validated }`
+Supported display currencies: **USD, CAD, EUR** (user preference, stored in localStorage).
+
+**Rule: all prices stored internally in USD.**
+
+Yahoo Finance returns prices in the native exchange currency (TSX = CAD, NYSE = USD, Euronext = EUR).
+At fetch time, normalize to USD using the current FX rate before writing to cache.
+At display time, convert from USD to the user's selected currency using the cached FX rate.
+
+FX rates source: `frankfurter.app` (free, no key, no quota issues).
+
+### FX Rate Cache (SQLite)
+
+Model: `FxRateCache { pair, rate, fetchedAt }` — e.g. pair = "EUR/USD", "CAD/USD"
+
+TTL: 1 hour (FX rates move slowly compared to asset prices)
+
+### Price Cache (SQLite)
+
+Model: `PriceCache { assetId, source, price, fetchedAt, validated }` — price always in USD
 
 TTL rules:
 - Stocks/ETFs: 15 min during market hours, 12h outside market hours
@@ -42,17 +60,19 @@ TTL rules:
 Fetch logic:
 1. Check cache — if within TTL, return immediately (no API call)
 2. Otherwise, call both sources in parallel
-3. Compare prices, validate (diff < 0.5%), persist to cache
-4. Return validated price
+3. Normalize each result to USD using FX rate cache
+4. Compare prices, validate (diff < 0.5%), persist to cache in USD
+5. Return validated USD price
 
 This reduces API calls by ~95% under normal usage.
 
 ## Data Models
 
 - `Account`: id, name, institution, type (CELI, REER, TFSA, taxable, etc.)
-- `Asset`: id, symbol, name, category (ETF, stock, crypto, etc.)
-- `Transaction`: id, accountId, assetId, date, quantity, price, type (buy/sell)
-- `PriceCache`: id, assetId, source, price, fetchedAt, validated
+- `Asset`: id, symbol, name, category (ETF, stock, crypto, etc.), nativeCurrency (USD/CAD/EUR)
+- `Transaction`: id, accountId, assetId, date, quantity, price, currency, type (buy/sell)
+- `PriceCache`: id, assetId, source, priceUsd, fetchedAt, validated
+- `FxRateCache`: id, pair, rate, fetchedAt
 
 ## Project Structure
 
