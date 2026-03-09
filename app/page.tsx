@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Eye, EyeOff } from "lucide-react";
 import { CurrencySelector } from "@/components/portfolio/currency-selector";
 import { AccountFilter, resolveAccountIds } from "@/components/portfolio/account-filter";
 import { CategoryFilter, matchesCategory } from "@/components/portfolio/category-filter";
@@ -34,6 +35,7 @@ export default function PortfolioPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountFilter, setAccountFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [valuesHidden, setValuesHidden] = useState(false);
 
   const fetchPortfolio = useCallback(async (filter = "all", allAccounts: Account[] = []) => {
     setLoading(true);
@@ -137,10 +139,21 @@ export default function PortfolioPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="bg-violet-50 border-violet-100 shadow-none">
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs font-medium text-violet-400 uppercase tracking-wide">Total value</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs font-medium text-violet-400 uppercase tracking-wide">Total value</CardTitle>
+              <button
+                onClick={() => setValuesHidden((h) => !h)}
+                className="text-violet-300 hover:text-violet-500 transition-colors"
+                aria-label={valuesHidden ? "Show values" : "Hide values"}
+              >
+                {valuesHidden ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl sm:text-3xl font-semibold text-violet-900 truncate">{loading ? "..." : totalDisplay}</p>
+            <p className="text-2xl sm:text-3xl font-semibold text-violet-900 truncate">
+              {loading ? "..." : valuesHidden ? "••••••••" : totalDisplay}
+            </p>
           </CardContent>
         </Card>
 
