@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSnapshotSeries } from "@/lib/portfolio/snapshot";
 
 const PERIODS: Record<string, number> = {
+  "1d": 1,
   "1w": 7,
   "1m": 30,
   "1y": 365,

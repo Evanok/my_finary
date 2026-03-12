@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 
-const PERIODS = ["1m", "all"] as const;
+const PERIODS = ["1d", "1w", "1m", "all"] as const;
 type Period = typeof PERIODS[number];
 
 interface SnapshotPoint {

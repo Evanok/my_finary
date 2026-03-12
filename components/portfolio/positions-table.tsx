@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Position } from "@/lib/portfolio/positions";
 
+type SortKey = "value" | "pl" | "plPct";
+type SortDir = "asc" | "desc";
+
 const CATEGORY_STYLES: Record<string, string> = {
   crypto:      "bg-violet-100 text-violet-700",
   stock:       "bg-sky-100 text-sky-700",
@@ -28,6 +31,30 @@ export function PositionsTable({ positions, displayCurrency, fxRate, onValuation
   const [editingId, setEditingId] = useState<string | null>(null);
   const [valuationInput, setValuationInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("value");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  }
+
+  const sorted = [...positions].sort((a, b) => {
+    let av: number, bv: number;
+    if (sortKey === "value") { av = a.valueUsd ?? 0; bv = b.valueUsd ?? 0; }
+    else if (sortKey === "pl") { av = a.plUsd ?? 0; bv = b.plUsd ?? 0; }
+    else { av = a.plPct ?? 0; bv = b.plPct ?? 0; }
+    return sortDir === "desc" ? bv - av : av - bv;
+  });
+
+  function sortIndicator(key: SortKey) {
+    if (sortKey !== key) return <span className="ml-1 opacity-30">↕</span>;
+    return <span className="ml-1">{sortDir === "desc" ? "↓" : "↑"}</span>;
+  }
 
   function fmt(usd: number | null) {
     if (usd === null) return "—";
@@ -72,14 +99,14 @@ export function PositionsTable({ positions, displayCurrency, fxRate, onValuation
             <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Qty</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Avg cost</th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">Price</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Value</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">P&L</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">P&L %</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-foreground" onClick={() => handleSort("value")}>Value{sortIndicator("value")}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell cursor-pointer select-none hover:text-foreground" onClick={() => handleSort("pl")}>P&L{sortIndicator("pl")}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-foreground" onClick={() => handleSort("plPct")}>P&L %{sortIndicator("plPct")}</th>
             <th className="px-4 py-3" />
           </tr>
         </thead>
         <tbody>
-          {positions.map((p) => {
+          {sorted.map((p) => {
             const positive = (p.plUsd ?? 0) >= 0;
             const isRealEstate = p.category.toLowerCase() === "real_estate";
             const isEditing = editingId === p.assetId;

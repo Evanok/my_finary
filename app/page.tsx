@@ -9,6 +9,7 @@ import { CurrencySelector } from "@/components/portfolio/currency-selector";
 import { AccountFilter, resolveAccountIds } from "@/components/portfolio/account-filter";
 import { CategoryFilter, matchesCategory } from "@/components/portfolio/category-filter";
 import { PerformanceChart } from "@/components/portfolio/performance-chart";
+import { AllocationChart } from "@/components/portfolio/allocation-chart";
 import { PositionsTable } from "@/components/portfolio/positions-table";
 import type { Position } from "@/lib/portfolio/positions";
 
@@ -36,6 +37,9 @@ export default function PortfolioPage() {
   const [accountFilter, setAccountFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [valuesHidden, setValuesHidden] = useState(false);
+  const [plPeriod, setPlPeriod] = useState<"all" | "1d" | "1w" | "1m">("all");
+  const [periodPl, setPeriodPl] = useState<{ delta: number; pct: number } | null>(null);
+  const [refLoading, setRefLoading] = useState(false);
 
   const fetchPortfolio = useCallback(async (filter = "all", allAccounts: Account[] = []) => {
     setLoading(true);
@@ -83,20 +87,41 @@ export default function PortfolioPage() {
     setSnapshotLoading(false);
   }
 
+  useEffect(() => {
+    if (plPeriod === "all") { setPeriodPl(null); return; }
+    setRefLoading(true);
+    fetch(`/api/portfolio/snapshots/reference?period=${plPeriod}`)
+      .then((r) => r.json())
+      .then((d: { refTotalUsd: number; latestTotalUsd: number } | null) => {
+        if (!d) { setPeriodPl(null); }
+        else {
+          const delta = d.latestTotalUsd - d.refTotalUsd;
+          const pct = d.refTotalUsd > 0 ? (delta / d.refTotalUsd) * 100 : 0;
+          setPeriodPl({ delta, pct });
+        }
+        setRefLoading(false);
+      });
+  }, [plPeriod]);
+
   const allPositions = data?.positions ?? [];
   const availableCategories = [...new Set(allPositions.map((p) => p.category.toLowerCase()))];
   const filteredPositions = allPositions.filter((p) => matchesCategory(p.category, categoryFilter));
   const filteredTotalUsd = filteredPositions.reduce((s, p) => s + (p.valueUsd ?? 0), 0);
   const totalCostUsd = filteredPositions.reduce((s, p) => s + p.costBasisUsd, 0);
-  const totalPlUsd = data ? filteredTotalUsd - totalCostUsd : null;
+  const allTimePlUsd = data ? filteredTotalUsd - totalCostUsd : null;
+  const allTimePlPct = totalCostUsd > 0 && allTimePlUsd !== null ? (allTimePlUsd / totalCostUsd) * 100 : null;
+
+  const totalPlUsd = plPeriod === "all" ? allTimePlUsd : (periodPl?.delta ?? null);
+  const totalPlPct = plPeriod === "all" ? allTimePlPct : (periodPl?.pct ?? null);
 
   const totalDisplay = data ? (filteredTotalUsd * fxRate).toLocaleString("en-CA", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
   }) : "—";
-  const totalPlPct = totalCostUsd > 0 && totalPlUsd !== null ? (totalPlUsd / totalCostUsd) * 100 : null;
   const isPositive = (totalPlUsd ?? 0) >= 0;
+
+  const PL_PERIODS = ["all", "1d", "1w", "1m"] as const;
 
   const updatedAt = data?.updatedAt
     ? new Date(data.updatedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })
@@ -159,15 +184,30 @@ export default function PortfolioPage() {
 
         <Card className={`shadow-none border-0 ${isPositive ? "bg-emerald-50" : "bg-rose-50"}`}>
           <CardHeader className="pb-1">
-            <CardTitle className={`text-xs font-medium uppercase tracking-wide ${isPositive ? "text-emerald-400" : "text-rose-400"}`}>Total P&L</CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className={`text-xs font-medium uppercase tracking-wide ${isPositive ? "text-emerald-400" : "text-rose-400"}`}>P&L</CardTitle>
+              <div className="flex gap-0.5">
+                {PL_PERIODS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPlPeriod(p)}
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors ${
+                      plPeriod === p
+                        ? "bg-emerald-200 text-emerald-800"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <p className={`text-2xl sm:text-3xl font-semibold truncate ${isPositive ? "text-emerald-700" : "text-rose-700"}`}>
-              {loading || totalPlUsd === null ? "..." : (totalPlUsd * fxRate).toLocaleString("en-CA", {
-                style: "currency",
-                currency,
-                maximumFractionDigits: 0,
-              })}
+              {refLoading || loading ? "..."
+                : totalPlUsd === null ? "N/A"
+                : (totalPlUsd * fxRate).toLocaleString("en-CA", { style: "currency", currency, maximumFractionDigits: 0 })}
             </p>
           </CardContent>
         </Card>
@@ -178,9 +218,11 @@ export default function PortfolioPage() {
           </CardHeader>
           <CardContent className="flex items-center gap-2">
             <p className={`text-2xl sm:text-3xl font-semibold ${isPositive ? "text-sky-700" : "text-orange-700"}`}>
-              {loading || totalPlPct === null ? "..." : `${totalPlPct >= 0 ? "+" : ""}${totalPlPct.toFixed(2)}%`}
+              {refLoading || loading ? "..."
+                : totalPlPct === null ? "N/A"
+                : `${totalPlPct >= 0 ? "+" : ""}${totalPlPct.toFixed(2)}%`}
             </p>
-            {!loading && totalPlPct !== null && (
+            {!loading && !refLoading && totalPlPct !== null && (
               <Badge className={`text-xs border-0 ${isPositive ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
                 {isPositive ? "gain" : "loss"}
               </Badge>
@@ -189,14 +231,25 @@ export default function PortfolioPage() {
         </Card>
       </div>
 
-      <Card className="shadow-none border border-border">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Performance</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PerformanceChart displayCurrency={currency} fxRate={fxRate} />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="shadow-none border border-border">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Performance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PerformanceChart displayCurrency={currency} fxRate={fxRate} />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-none border border-border">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Allocation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AllocationChart positions={filteredPositions} displayCurrency={currency} fxRate={fxRate} />
+          </CardContent>
+        </Card>
+      </div>
 
       <div>
         <h2 className="text-lg font-semibold mb-4">Positions</h2>
