@@ -12,7 +12,7 @@ export async function refreshPrices(): Promise<void> {
   await computePositions(undefined, true);
 }
 
-export async function takeSnapshot(): Promise<{ totalUsd: number; date: Date }> {
+export async function takeSnapshot(): Promise<{ totalUsd: number; date: Date; failedSymbols: string[] }> {
   const positions = await computePositions(undefined, true);
   const totalUsd = sumPortfolioUsd(positions);
   const date = toSnapshotDate(new Date());
@@ -31,7 +31,8 @@ export async function takeSnapshot(): Promise<{ totalUsd: number; date: Date }> 
     create: { date, totalUsd, breakdown: JSON.stringify(breakdown) },
   });
 
-  return { totalUsd, date };
+  const failedSymbols = positions.filter((p) => p.currentPriceUsd === null).map((p) => p.symbol);
+  return { totalUsd, date, failedSymbols };
 }
 
 export type SnapshotPoint = { date: string; totalUsd: number };

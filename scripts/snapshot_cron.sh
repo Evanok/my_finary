@@ -43,6 +43,8 @@ Portfolio snapshot failed on $(date -u '+%Y-%m-%d at %H:%M UTC').
 HTTP status: $HTTP_STATUS
 Response: $RESPONSE
 
+$(if [[ "$HTTP_STATUS" == "207" ]]; then echo "Some prices could not be fetched. Check failedSymbols in the response above."; fi)
+
 Check the log: $LOG_FILE
 EOF
 
