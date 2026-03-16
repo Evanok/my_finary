@@ -47,6 +47,15 @@ export function PerformanceChart({ displayCurrency, fxRate }: Props) {
   const isPositive = last >= first;
   const color = isPositive ? "#34d399" : "#fb7185";
 
+  const values = converted.map((p) => p.value);
+  const minVal = Math.min(...values);
+  const maxVal = Math.max(...values);
+  const padding = (maxVal - minVal) * 0.1 || maxVal * 0.05;
+  const yDomain: [number, number] = [
+    Math.max(0, minVal - padding),
+    maxVal + padding,
+  ];
+
   function formatCurrency(v: number) {
     return v.toLocaleString("en-CA", {
       style: "currency",
@@ -106,6 +115,7 @@ export function PerformanceChart({ displayCurrency, fxRate }: Props) {
               axisLine={false}
               tickFormatter={(v) => formatCurrency(v as number)}
               width={90}
+              domain={yDomain}
             />
             <Tooltip
               formatter={(v) => [formatCurrency(v as number), "Value"]}
@@ -119,7 +129,8 @@ export function PerformanceChart({ displayCurrency, fxRate }: Props) {
               stroke={color}
               strokeWidth={2}
               fill="url(#colorValue)"
-              dot={false}
+              dot={{ r: 3, fill: color, strokeWidth: 0 }}
+              activeDot={{ r: 5 }}
             />
           </AreaChart>
         </ResponsiveContainer>
