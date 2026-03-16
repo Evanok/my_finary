@@ -74,7 +74,10 @@ export async function computePositions(accountIds?: string[], forceRefresh = fal
 
   const positions: Position[] = [];
   for (const [assetId, { asset, quantity, totalCostUsd }] of entries) {
-    let result = await getAssetPrice(assetId, asset.symbol, asset.category, asset.nativeCurrency, forceRefresh);
+    // For crypto, the batch CoinGecko call already populated the cache above,
+    // so always read from cache (forceRefresh=false) to avoid 16 individual API calls.
+    const isCrypto = asset.category.toLowerCase() === "crypto";
+    let result = await getAssetPrice(assetId, asset.symbol, asset.category, asset.nativeCurrency, isCrypto ? false : forceRefresh);
     // Real estate with no manual valuation yet: use avg cost as current price (P&L = 0)
     if (result === null && asset.category.toLowerCase() === "real_estate") {
       const fxRate = await toUsd(asset.nativeCurrency);
