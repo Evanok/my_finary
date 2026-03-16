@@ -10,10 +10,8 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { Button } from "@/components/ui/button";
 
-const PERIODS = ["1d", "1w", "1m", "all"] as const;
-type Period = typeof PERIODS[number];
+type Period = "1w" | "1m" | "all";
 
 interface SnapshotPoint {
   date: string;
@@ -23,19 +21,20 @@ interface SnapshotPoint {
 interface Props {
   displayCurrency: string;
   fxRate: number;
+  categoryFilter?: string;
+  period: Period;
 }
 
-export function PerformanceChart({ displayCurrency, fxRate }: Props) {
-  const [period, setPeriod] = useState<Period>("all");
+export function PerformanceChart({ displayCurrency, fxRate, categoryFilter = "all", period }: Props) {
   const [data, setData] = useState<SnapshotPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/portfolio/snapshots?period=${period}`)
+    fetch(`/api/portfolio/snapshots?period=${period}&category=${categoryFilter}`)
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); });
-  }, [period]);
+  }, [period, categoryFilter]);
 
   const converted = data.map((p) => ({
     date: p.date,
@@ -66,22 +65,6 @@ export function PerformanceChart({ displayCurrency, fxRate }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end gap-1">
-        {PERIODS.map((p) => (
-          <button
-            key={p}
-            onClick={() => setPeriod(p)}
-            className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
-              period === p
-                ? "bg-violet-100 text-violet-700"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {p}
-          </button>
-        ))}
-      </div>
-
       {loading ? (
         <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
           Loading...

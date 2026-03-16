@@ -11,8 +11,9 @@ const PERIODS: Record<string, number> = {
 // GET /api/portfolio/snapshots?period=1w|1m|1y|all
 export async function GET(req: NextRequest) {
   const period = req.nextUrl.searchParams.get("period") ?? "all";
+  const categoryFilter = req.nextUrl.searchParams.get("category") ?? "all";
   const days = PERIODS[period];
   const since = days ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : undefined;
-  const series = await getSnapshotSeries(since);
+  const series = await getSnapshotSeries(since, categoryFilter);
   return NextResponse.json(series);
 }

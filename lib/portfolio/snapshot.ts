@@ -20,6 +20,7 @@ export async function takeSnapshot(): Promise<{ totalUsd: number; date: Date; fa
   const breakdown = positions.map((p) => ({
     assetId: p.assetId,
     symbol: p.symbol,
+    category: p.category,
     quantity: p.quantity,
     priceUsd: p.currentPriceUsd,
     valueUsd: p.valueUsd,
@@ -37,15 +38,33 @@ export async function takeSnapshot(): Promise<{ totalUsd: number; date: Date; fa
 
 export type SnapshotPoint = { date: string; totalUsd: number };
 
-export async function getSnapshotSeries(since?: Date): Promise<SnapshotPoint[]> {
+const CATEGORY_GROUPS: Record<string, string[]> = {
+  crypto:      ["crypto"],
+  stock:       ["stock", "etf"],
+  real_estate: ["real_estate"],
+  cash:        ["cash"],
+  other:       ["bond", "reit", "other"],
+};
+
+export async function getSnapshotSeries(since?: Date, categoryFilter?: string): Promise<SnapshotPoint[]> {
+  const filterCategories = categoryFilter && categoryFilter !== "all"
+    ? (CATEGORY_GROUPS[categoryFilter] ?? null)
+    : null;
+
   const snapshots = await prisma.portfolioSnapshot.findMany({
     where: since ? { date: { gte: since } } : undefined,
     orderBy: { date: "asc" },
-    select: { date: true, totalUsd: true },
+    select: { date: true, totalUsd: true, ...(filterCategories ? { breakdown: true } : {}) },
   });
 
-  return snapshots.map((s) => ({
-    date: s.date.toISOString().split("T")[0],
-    totalUsd: s.totalUsd,
-  }));
+  return snapshots.map((s) => {
+    let totalUsd = s.totalUsd;
+    if (filterCategories && "breakdown" in s && s.breakdown) {
+      const items = JSON.parse(s.breakdown as string) as Array<{ category?: string; valueUsd?: number }>;
+      totalUsd = items
+        .filter((item) => item.category && filterCategories.includes(item.category.toLowerCase()))
+        .reduce((sum, item) => sum + (item.valueUsd ?? 0), 0);
+    }
+    return { date: s.date.toISOString().split("T")[0], totalUsd };
+  });
 }

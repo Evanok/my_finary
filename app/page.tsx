@@ -37,7 +37,7 @@ export default function PortfolioPage() {
   const [accountFilter, setAccountFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [valuesHidden, setValuesHidden] = useState(false);
-  const [plPeriod, setPlPeriod] = useState<"all" | "1d" | "1w" | "1m">("all");
+  const [period, setPeriod] = useState<"all" | "1w" | "1m">("all");
   const [periodPl, setPeriodPl] = useState<{ delta: number; pct: number } | null>(null);
   const [refLoading, setRefLoading] = useState(false);
 
@@ -88,9 +88,9 @@ export default function PortfolioPage() {
   }
 
   useEffect(() => {
-    if (plPeriod === "all") { setPeriodPl(null); return; }
+    if (period === "all") { setPeriodPl(null); return; }
     setRefLoading(true);
-    fetch(`/api/portfolio/snapshots/reference?period=${plPeriod}`)
+    fetch(`/api/portfolio/snapshots/reference?period=${period}&category=${categoryFilter}`)
       .then((r) => r.json())
       .then((d: { refTotalUsd: number; latestTotalUsd: number } | null) => {
         if (!d) { setPeriodPl(null); }
@@ -101,7 +101,7 @@ export default function PortfolioPage() {
         }
         setRefLoading(false);
       });
-  }, [plPeriod]);
+  }, [period, categoryFilter]);
 
   const allPositions = data?.positions ?? [];
   const availableCategories = [...new Set(allPositions.map((p) => p.category.toLowerCase()))];
@@ -111,8 +111,8 @@ export default function PortfolioPage() {
   const allTimePlUsd = data ? filteredTotalUsd - totalCostUsd : null;
   const allTimePlPct = totalCostUsd > 0 && allTimePlUsd !== null ? (allTimePlUsd / totalCostUsd) * 100 : null;
 
-  const totalPlUsd = plPeriod === "all" ? allTimePlUsd : (periodPl?.delta ?? null);
-  const totalPlPct = plPeriod === "all" ? allTimePlPct : (periodPl?.pct ?? null);
+  const totalPlUsd = period === "all" ? allTimePlUsd : (periodPl?.delta ?? null);
+  const totalPlPct = period === "all" ? allTimePlPct : (periodPl?.pct ?? null);
 
   const totalDisplay = data ? (filteredTotalUsd * fxRate).toLocaleString("en-CA", {
     style: "currency",
@@ -121,7 +121,7 @@ export default function PortfolioPage() {
   }) : "—";
   const isPositive = (totalPlUsd ?? 0) >= 0;
 
-  const PL_PERIODS = ["all", "1d", "1w", "1m"] as const;
+  const PL_PERIODS = ["all", "1w", "1m"] as const;
 
   const updatedAt = data?.updatedAt
     ? new Date(data.updatedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })
@@ -190,9 +190,9 @@ export default function PortfolioPage() {
                 {PL_PERIODS.map((p) => (
                   <button
                     key={p}
-                    onClick={() => setPlPeriod(p)}
+                    onClick={() => setPeriod(p)}
                     className={`text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors ${
-                      plPeriod === p
+                      period === p
                         ? "bg-emerald-200 text-emerald-800"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
@@ -237,7 +237,7 @@ export default function PortfolioPage() {
             <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Performance</CardTitle>
           </CardHeader>
           <CardContent>
-            <PerformanceChart displayCurrency={currency} fxRate={fxRate} />
+            <PerformanceChart displayCurrency={currency} fxRate={fxRate} categoryFilter={categoryFilter} period={period} />
           </CardContent>
         </Card>
 
