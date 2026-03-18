@@ -1,5 +1,10 @@
 const BASE_URL = "https://api.coingecko.com/api/v3";
 
+function apiHeaders(): HeadersInit {
+  const key = process.env.COINGECKO_API_KEY;
+  return key ? { "x-cg-demo-api-key": key } : {};
+}
+
 // CoinGecko uses its own IDs (e.g. "bitcoin", "ethereum"), not ticker symbols.
 // Returns price in USD.
 export async function fetchCoinGeckoPrice(coinId: string): Promise<number | null> {
@@ -15,7 +20,7 @@ export async function fetchCoinGeckoPrices(coinIds: string[]): Promise<Record<st
     const ids = coinIds.map(encodeURIComponent).join(",");
     const res = await fetch(
       `${BASE_URL}/simple/price?ids=${ids}&vs_currencies=usd`,
-      { next: { revalidate: 0 } }
+      { next: { revalidate: 0 }, headers: apiHeaders() }
     );
     if (!res.ok) return {};
     const data = await res.json();
