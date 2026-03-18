@@ -9,8 +9,8 @@ if [[ -f "$ENV_FILE" ]]; then
   source "$ENV_FILE"
 fi
 
-GMAIL_USER="lambertarthur22@gmail.com"
-SESSION_COOKIE="b47d36d3a00a7875938fe00f36cdf99a7aed070d63fd7bf59231c817db85f74f"
+GMAIL_USER="${GMAIL_USER:?GMAIL_USER must be set in $ENV_FILE}"
+SESSION_COOKIE="${SESSION_COOKIE:?SESSION_COOKIE must be set in $ENV_FILE}"
 SNAPSHOT_URL="http://localhost:3000/api/portfolio/snapshot"
 LOG_FILE="/home/arthur/work/my_finary/snapshot.log"
 
