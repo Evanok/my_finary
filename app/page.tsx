@@ -53,9 +53,9 @@ export default function PortfolioPage() {
 
   useEffect(() => {
     if (currency === "USD") { setFxRate(1); return; }
-    fetch(`https://api.frankfurter.app/latest?from=USD&to=${currency}`)
+    fetch(`/api/fx?currency=${currency}`)
       .then((r) => r.json())
-      .then((d) => setFxRate(d.rates?.[currency] ?? 1))
+      .then((d) => setFxRate(d.rate ?? 1))
       .catch(() => setFxRate(1));
   }, [currency]);
 
